@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ML Playground — Live Predictions</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131c;
+      --surface2: #1a1a28;
+      --border: rgba(255, 255, 255, 0.07);
+      --text: #e8e8f0;
+      --muted: rgba(232, 232, 240, 0.4);
+      --cyan: #00e5ff;
+      --green: #00ff9d;
+      --orange: #ff6b35;
+      --pink: #ff3d9a;
+      --yellow: #ffd60a;
+      --purple: #a855f7;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0, 229, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 229, 255, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* HEADER */
+    header {
+      padding: 48px 48px 32px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--cyan), var(--purple));
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+
+    .logo-text {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 20px;
+      letter-spacing: -0.02em;
+    }
+
+    .logo-text span {
+      color: var(--cyan);
+    }
+
+    .header-badge {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      padding: 5px 12px;
+      border: 1px solid var(--cyan);
+      border-radius: 100px;
+      color: var(--cyan);
+      letter-spacing: 0.1em;
+      animation: pulse-border 2s infinite;
+    }
+
+    @keyframes pulse-border {
+
+      0%,
+      100% {
+        box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.3);
+      }
+
+      50% {
+        box-shadow: 0 0 0 6px rgba(0, 229, 255, 0);
+      }
+    }
+
+    /* ALGORITHM TABS */
+    .algo-tabs {
+      padding: 24px 48px 0;
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tab {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      padding: 10px 20px 14px;
+      border-radius: 8px 8px 0 0;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      color: var(--muted);
+      border: 1px solid transparent;
+      border-bottom: none;
+      position: relative;
+      bottom: -1px;
+      background: transparent;
+    }
+
+    .tab:hover {
+      color: var(--text);
+      background: var(--surface);
+    }
+
+    .tab.active {
+      color: var(--text);
+      background: var(--surface);
+      border-color: var(--border);
+      border-bottom-color: var(--surface);
+    }
+
+    .tab-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin-right: 7px;
+      vertical-align: middle;
+    }
+
+    /* MAIN CONTENT */
+    .content {
+      padding: 40px 48px;
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 24px;
+      min-height: calc(100vh - 200px);
+    }
+
+    @media (max-width: 900px) {
+      .content {
+        grid-template-columns: 1fr;
+        padding: 24px;
+      }
+
+      header,
+      .algo-tabs {
+        padding-left: 24px;
+        padding-right: 24px;
+      }
+    }
+
+    /* PANEL */
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .panel-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-title::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent, var(--cyan));
+      box-shadow: 0 0 8px var(--accent, var(--cyan));
+    }
+
+    /* ALGO CARDS (right panel) */
+    .algo-page {
+      display: none;
+    }
+
+    .algo-page.active {
+      display: block;
+    }
+
+    .algo-meta {
+      padding: 28px 24px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .algo-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin-bottom: 8px;
+    }
+
+    .algo-desc {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.65;
+      max-width: 540px;
+    }
+
+    .formula-strip {
+      margin-top: 14px;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--accent, var(--cyan));
+      background: rgba(0, 229, 255, 0.05);
+      border: 1px solid rgba(0, 229, 255, 0.15);
+      border-radius: 6px;
+      padding: 8px 14px;
+      display: inline-block;
+      letter-spacing: 0.05em;
+    }
+
+    /* INPUT SECTION */
+    .input-section {
+      padding: 24px;
+    }
+
+    .input-group {
+      margin-bottom: 18px;
+    }
+
+    .input-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .input-label span:first-child {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .input-label .val-badge {
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--accent, var(--cyan));
+      background: rgba(0, 229, 255, 0.08);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--surface2);
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent, var(--cyan));
+      box-shadow: 0 0 8px var(--accent, var(--cyan));
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.3);
+    }
+
+    input[type="number"],
+    input[type="text"],
+    select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="number"]:focus,
+    input[type="text"]:focus,
+    select:focus {
+      border-color: var(--accent, var(--cyan));
+    }
+
+    select option {
+      background: var(--surface);
+    }
+
+    /* RADIO TOGGLE */
+    .toggle-group {
+      display: flex;
+      gap: 4px;
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 3px;
+    }
+
+    .toggle-btn {
+      flex: 1;
+      padding: 7px 12px;
+      border-radius: 6px;
+      text-align: center;
+      cursor: pointer;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      transition: all 0.2s;
+      user-select: none;
+    }
+
+    .toggle-btn.active {
+      background: var(--accent, var(--cyan));
+      color: var(--bg);
+      font-weight: 700;
+    }
+
+    /* PREDICT BUTTON */
+    .predict-btn {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent, var(--cyan)), var(--purple));
+      color: white;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .predict-btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: white;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .predict-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(0, 229, 255, 0.25);
+    }
+
+    .predict-btn:active::after {
+      opacity: 0.1;
+    }
+
+    /* RESULT PANEL */
+    .result-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-top: 20px;
+      min-height: 80px;
+      transition: all 0.3s;
+    }
+
+    .result-box.has-result {
+      border-color: var(--accent, var(--cyan));
+      box-shadow: 0 0 20px rgba(0, 229, 255, 0.08);
+    }
+
+    .result-label {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .result-value {
+      font-family: 'Syne', sans-serif;
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--accent, var(--cyan));
+      letter-spacing: -0.02em;
+      animation: slideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .result-detail {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+      font-family: 'Space Mono', monospace;
+      line-height: 1.6;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* VISUALIZATION */
+    .viz-area {
+      padding: 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    .viz-title {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    canvas {
+      width: 100%;
+      max-height: 200px;
+      border-radius: 8px;
+      background: var(--surface2);
+    }
+
+    /* STEPS LIST */
+    .steps {
+      padding: 0 24px 24px;
+      border-top: 1px solid var(--border);
+      padding-top: 20px;
+    }
+
+    .step {
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+
+    .step-num {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      min-width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 1px solid var(--accent, var(--cyan));
+      color: var(--accent, var(--cyan));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .step-text {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+      padding-top: 3px;
+    }
+
+    .step-text strong {
+      color: var(--text);
+    }
+
+    /* Info pills */
+    .info-pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+    }
+
+    .pill {
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      padding: 4px 10px;
+      border-radius: 100px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+
+    <header>
+      <div class="logo">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-text">ML <span>Playground by SADAM</span></div>
+      </div>
+      <div class="header-badge">● LIVE PREDICTIONS</div>
+    </header>
+
+    <div class="algo-tabs" id="tabs"></div>
+
+    <div class="content">
+
+      <!-- LEFT: Input panel -->
+      <div>
+        <div class="panel" id="inputPanel">
+          <div class="panel-header">
+            <div class="panel-title" id="inputTitle">Input Features</div>
+            <span style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted)">CONFIGURE</span>
+          </div>
+          <div class="input-section" id="inputSection"></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Output panel -->
+      <div>
+        <div class="panel" id="outputPanel">
+          <div id="algoPages"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // ─── ALGORITHMS CONFIG ─────────────────────────────────────────────────────
+    const ALGOS = [
+      {
+        id: 'linear',
+        name: 'Linear Regression',
+        color: '#00e5ff',
+        emoji: '📈',
+        desc: 'Predicts a continuous output by fitting a weighted sum of input features. Classic, interpretable, and the foundation of all supervised learning.',
+        formula: 'ŷ = β₀ + β₁x₁ + β₂x₂ + β₃x₃',
+        category: 'Supervised',
+        inputs: [
+          { id: 'x1', label: 'House Size (m²)', type: 'range', min: 30, max: 300, step: 5, default: 120, unit: 'm²' },
+          { id: 'x2', label: 'Bedrooms', type: 'range', min: 1, max: 8, step: 1, default: 3, unit: '' },
+          { id: 'x3', label: 'Location Score', type: 'range', min: 1, max: 10, step: 0.5, default: 6, unit: '/10' },
+        ],
+        predict(vals) {
+          const price = 500 + vals.x1 * 18 + vals.x2 * 8000 + vals.x3 * 12000;
+          return {
+            value: `$${Math.round(price).toLocaleString()}`,
+            detail: `β₀=500  β₁=18  β₂=8000  β₃=12000\nPredicted house price based on weighted features`,
+            raw: price
+          };
+        },
+        steps: [
+          { t: 'Collect training data', d: 'Historical house prices with features' },
+          { t: 'Fit coefficients (β)', d: 'Minimize sum of squared residuals via OLS' },
+          { t: 'Apply formula', d: 'Multiply each feature by its learned weight' },
+        ],
+        pills: ['OLS', 'Regression', 'Continuous Output', 'No Hyperparameters']
+      },
+
+      {
+        id: 'logistic',
+        name: 'Logistic Regression',
+        color: '#ff6b35',
+        emoji: '🎯',
+        desc: 'Classifies inputs into binary categories by passing a linear combination through the sigmoid function to produce a probability between 0 and 1.',
+        formula: 'P(y=1) = σ(β₀ + β₁x₁ + β₂x₂)',
+        category: 'Classification',
+        inputs: [
+          { id: 'x1', label: 'Tumor Size (cm)', type: 'range', min: 0.5, max: 10, step: 0.5, default: 4, unit: 'cm' },
+          { id: 'x2', label: 'Patient Age', type: 'range', min: 20, max: 90, step: 1, default: 52, unit: 'yrs' },
+          { id: 'x3', label: 'Marker Level', type: 'range', min: 0, max: 100, step: 1, default: 45, unit: '' },
+        ],
+        predict(vals) {
+          const z = -6 + vals.x1 * 0.8 + vals.x2 * 0.04 + vals.x3 * 0.03;
+          const prob = 1 / (1 + Math.exp(-z));
+          const label = prob > 0.5 ? 'MALIGNANT' : 'BENIGN';
+          const conf = (Math.max(prob, 1 - prob) * 100).toFixed(1);
+          return {
+            value: label,
+            detail: `Probability: ${(prob * 100).toFixed(1)}%  ·  z = ${z.toFixed(2)}\nConfidence: ${conf}%  ·  Threshold: 0.50`,
+            prob
+          };
+        },
+        steps: [
+          { t: 'Compute linear score z', d: 'z = β₀ + β₁·size + β₂·age + β₃·marker' },
+          { t: 'Apply sigmoid', d: 'σ(z) = 1 / (1 + e⁻ᶻ) → probability' },
+          { t: 'Apply threshold', d: 'P > 0.5 → Malignant, else Benign' },
+        ],
+        pills: ['Binary Classification', 'Sigmoid', 'Probability Output', 'MLE Training']
+      },
+
+      {
+        id: 'knn',
+        name: 'K-Nearest Neighbors',
+        color: '#00ff9d',
+        emoji: '🔍',
+        desc: 'Classifies a new point by majority vote of its k closest neighbors in the training set. No training phase — pure memory-based learning.',
+        formula: 'ŷ = mode{ y(i) : i ∈ Nₖ(x) }',
+        category: 'Instance-Based',
+        inputs: [
+          { id: 'k', label: 'K (neighbors)', type: 'range', min: 1, max: 15, step: 2, default: 5, unit: '' },
+          { id: 'x1', label: 'Feature 1 (height cm)', type: 'range', min: 140, max: 210, step: 1, default: 175, unit: 'cm' },
+          { id: 'x2', label: 'Feature 2 (weight kg)', type: 'range', min: 40, max: 130, step: 1, default: 72, unit: 'kg' },
+        ],
+        predict(vals) {
+          // Simulate a BMI-based sport classification
+          const bmi = vals.x2 / ((vals.x1 / 100) ** 2);
+          const score = (vals.x1 - 150) * 0.3 - (bmi - 22) * 1.2;
+          const classes = ['Gymnast', 'Sprinter', 'Basketball', 'Weightlifter', 'Swimmer'];
+          const idx = Math.min(4, Math.max(0, Math.round((score + 8) / 4)));
+          const votes = Array(parseInt(vals.k)).fill(0).map((_, i) =>
+            classes[Math.min(4, Math.max(0, idx + (Math.random() > 0.7 ? (Math.random() > 0.5 ? 1 : -1) : 0)))]
+          );
+          const winner = votes.sort((a, b) =>
+            votes.filter(v => v === b).length - votes.filter(v => v === a).length
+          )[0];
+          const conf = (votes.filter(v => v === winner).length / votes.length * 100).toFixed(0);
+          return {
+            value: winner,
+            detail: `K=${vals.k} neighbors  ·  BMI: ${bmi.toFixed(1)}\nVotes: ${conf}% majority  ·  Sport prediction`,
+            votes
+          };
+        },
+        steps: [
+          { t: 'Calculate distances', d: 'Euclidean distance to all training points' },
+          { t: 'Select K nearest', d: `Pick the ${3} closest neighbors` },
+          { t: 'Majority vote', d: 'Most common class wins' },
+        ],
+        pills: ['No Training', 'Lazy Learner', 'Classification', 'Euclidean Distance']
+      },
+
+      {
+        id: 'dtree',
+        name: 'Decision Tree',
+        color: '#ffd60a',
+        emoji: '🌳',
+        desc: 'Recursively partitions the feature space using the most informative splits. Each path from root to leaf encodes a decision rule.',
+        formula: 'Gini = 1 − Σ pᵢ²',
+        category: 'Tree-Based',
+        inputs: [
+          { id: 'x1', label: 'Credit Score', type: 'range', min: 300, max: 850, step: 10, default: 650, unit: '' },
+          { id: 'x2', label: 'Annual Income ($k)', type: 'range', min: 10, max: 300, step: 5, default: 75, unit: 'k' },
+          { id: 'x3', label: 'Debt Ratio (%)', type: 'range', min: 0, max: 80, step: 1, default: 30, unit: '%' },
+        ],
+        predict(vals) {
+          let path = [];
+          let result;
+          if (vals.x1 >= 700) {
+            path.push('Credit ≥ 700 → ✓');
+            if (vals.x3 <= 35) {
+              path.push('Debt ≤ 35% → ✓');
+              result = 'APPROVED';
+            } else {
+              path.push('Debt > 35% → ✗');
+              result = vals.x2 >= 100 ? 'APPROVED' : 'REVIEW';
+              path.push(vals.x2 >= 100 ? 'Income ≥ 100k → ✓' : 'Income < 100k → ⚠');
+            }
+          } else if (vals.x1 >= 580) {
+            path.push('Credit 580–699 → ⚠');
+            if (vals.x2 >= 80 && vals.x3 <= 25) {
+              result = 'APPROVED';
+              path.push('Income OK & Low Debt → ✓');
+            } else {
+              result = 'REVIEW';
+              path.push('Marginal conditions → ⚠');
+            }
+          } else {
+            path.push('Credit < 580 → ✗');
+            result = 'DENIED';
+          }
+          return {
+            value: result,
+            detail: `Decision path:\n${path.join(' → ')}`,
+            path
+          };
+        },
+        steps: [
+          { t: 'Root split: Credit Score', d: 'Highest information gain feature splits first' },
+          { t: 'Branch on Debt Ratio', d: 'Gini impurity guides each subsequent split' },
+          { t: 'Reach leaf node', d: 'Final class label is the majority at that leaf' },
+        ],
+        pills: ['CART', 'Gini Impurity', 'Classification', 'Interpretable']
+      },
+
+      {
+        id: 'svm',
+        name: 'Support Vector Machine',
+        color: '#a855f7',
+        emoji: '✂️',
+        desc: 'Finds the optimal separating hyperplane that maximizes the margin between classes. Support vectors are the critical boundary points.',
+        formula: 'min ½‖w‖² s.t. yᵢ(w·xᵢ+b) ≥ 1',
+        category: 'Classification',
+        inputs: [
+          { id: 'x1', label: 'Petal Length (cm)', type: 'range', min: 1, max: 7, step: 0.1, default: 4.5, unit: 'cm' },
+          { id: 'x2', label: 'Petal Width (cm)', type: 'range', min: 0.1, max: 2.5, step: 0.1, default: 1.4, unit: 'cm' },
+          { id: 'c', label: 'C (Regularization)', type: 'range', min: 0.1, max: 10, step: 0.1, default: 1.0, unit: '' },
+        ],
+        predict(vals) {
+          // Iris-like SVM boundaries
+          const score1 = -2.5 + vals.x1 * 0.9 + vals.x2 * 1.5;
+          const score2 = -8 + vals.x1 * 1.8 + vals.x2 * 2.1;
+          let species, margin;
+          if (score1 < 0) { species = 'Iris Setosa'; margin = Math.abs(score1).toFixed(2); }
+          else if (score2 < 0) { species = 'Iris Versicolor'; margin = Math.abs(score2).toFixed(2); }
+          else { species = 'Iris Virginica'; margin = Math.abs(score2).toFixed(2); }
+          return {
+            value: species,
+            detail: `Decision margin: ${margin}  ·  C=${vals.c}\nSupport vectors define the classification boundary`,
+            margin: parseFloat(margin)
+          };
+        },
+        steps: [
+          { t: 'Map to feature space', d: 'RBF kernel projects data if non-linearly separable' },
+          { t: 'Find max-margin hyperplane', d: 'Solve quadratic optimization problem' },
+          { t: 'Classify new point', d: 'Sign of w·x + b determines the class' },
+        ],
+        pills: ['RBF Kernel', 'Max Margin', 'Multi-Class', 'C Regularization']
+      },
+
+      {
+        id: 'kmeans',
+        name: 'K-Means Clustering',
+        color: '#ff3d9a',
+        emoji: '🔵',
+        desc: 'Unsupervised algorithm that groups data into K clusters by minimizing within-cluster variance. Iteratively refines centroids until convergence.',
+        formula: 'argminₛ Σᵢ Σₓ∈Sᵢ ‖x − μᵢ‖²',
+        category: 'Unsupervised',
+        inputs: [
+          { id: 'k', label: 'Number of Clusters (K)', type: 'range', min: 2, max: 8, step: 1, default: 3, unit: '' },
+          { id: 'x1', label: 'Customer Spend ($)', type: 'range', min: 0, max: 5000, step: 50, default: 1200, unit: '$' },
+          { id: 'x2', label: 'Visit Frequency /mo', type: 'range', min: 1, max: 30, step: 1, default: 8, unit: '/mo' },
+        ],
+        predict(vals) {
+          const k = parseInt(vals.k);
+          const centroids = [];
+          for (let i = 0; i < k; i++) {
+            centroids.push({ spend: (i + 0.5) * 5000 / k, freq: (i + 0.5) * 30 / k });
+          }
+          let closest = 0, minDist = Infinity;
+          centroids.forEach((c, i) => {
+            const d = Math.sqrt(((vals.x1 - c.spend) / 5000) ** 2 + ((vals.x2 - c.freq) / 30) ** 2);
+            if (d < minDist) { minDist = d; closest = i; }
+          });
+          const labels = ['Bronze', 'Silver', 'Gold', 'Platinum', 'Diamond', 'Elite', 'VIP', 'Premium'];
+          const segment = labels[Math.floor(closest * labels.length / k)];
+          return {
+            value: `Cluster ${closest + 1} · ${segment}`,
+            detail: `Distance to centroid: ${(minDist * 100).toFixed(1)}  ·  K=${k}\nCustomer segment: ${segment} tier`,
+            cluster: closest
+          };
+        },
+        steps: [
+          { t: 'Initialize K centroids', d: 'Random placement or K-Means++ initialization' },
+          { t: 'Assign points', d: 'Each point joins its nearest centroid cluster' },
+          { t: 'Update centroids', d: 'Recompute mean of each cluster, repeat' },
+        ],
+        pills: ['Unsupervised', 'Centroid-Based', 'Euclidean', 'Lloyd\'s Algorithm']
+      },
+
+      {
+        id: 'naive_bayes',
+        name: 'Naïve Bayes',
+        color: '#00e5ff',
+        emoji: '📊',
+        desc: 'Applies Bayes\' theorem assuming feature independence. Surprisingly effective for text and categorical data despite the naïve assumption.',
+        formula: 'P(C|x) ∝ P(C) · ∏ P(xᵢ|C)',
+        category: 'Probabilistic',
+        inputs: [
+          { id: 'w1', label: '"Free" in email', type: 'toggle', options: ['No', 'Yes'], default: 1 },
+          { id: 'w2', label: '"Win" in email', type: 'toggle', options: ['No', 'Yes'], default: 0 },
+          { id: 'w3', label: '"Click here" link', type: 'toggle', options: ['No', 'Yes'], default: 1 },
+          { id: 'w4', label: 'Known sender', type: 'toggle', options: ['No', 'Yes'], default: 0 },
+        ],
+        predict(vals) {
+          // Spam classification
+          let logSpam = Math.log(0.4), logHam = Math.log(0.6);
+          const spamProbs = { w1: 0.85, w2: 0.78, w3: 0.72, w4: 0.05 };
+          const hamProbs = { w1: 0.05, w2: 0.03, w3: 0.10, w4: 0.80 };
+          ['w1', 'w2', 'w3', 'w4'].forEach(k => {
+            const v = parseFloat(vals[k]);
+            if (v === 1) {
+              logSpam += Math.log(spamProbs[k]);
+              logHam += Math.log(hamProbs[k]);
+            } else {
+              logSpam += Math.log(1 - spamProbs[k]);
+              logHam += Math.log(1 - hamProbs[k]);
+            }
+          });
+          const spamExp = Math.exp(logSpam), hamExp = Math.exp(logHam);
+          const pSpam = spamExp / (spamExp + hamExp);
+          const label = pSpam > 0.5 ? '🚫 SPAM' : '✅ LEGITIMATE';
+          return {
+            value: label,
+            detail: `P(Spam|features) = ${(pSpam * 100).toFixed(1)}%\nP(Ham|features) = ${((1 - pSpam) * 100).toFixed(1)}%`,
+            pSpam
+          };
+        },
+        steps: [
+          { t: 'Compute P(C)', d: 'Prior probability from training data proportions' },
+          { t: 'Multiply likelihoods', d: 'P(x₁|C)·P(x₂|C)·... for each feature' },
+          { t: 'Compare posteriors', d: 'Pick class with highest P(C)·∏P(xᵢ|C)' },
+        ],
+        pills: ['Bayes Theorem', 'Independence Assumption', 'Text Classification', 'Fast Training']
+      },
+
+      {
+        id: 'gradient',
+        name: 'Gradient Boosting',
+        color: '#ff6b35',
+        emoji: '🚀',
+        desc: 'Sequentially builds an ensemble of weak learners (trees), each correcting the residuals of the previous. The king of tabular data competitions.',
+        formula: 'Fₘ(x) = Fₘ₋₁(x) + η · hₘ(x)',
+        category: 'Ensemble',
+        inputs: [
+          { id: 'trees', label: 'Number of Trees', type: 'range', min: 10, max: 500, step: 10, default: 100, unit: '' },
+          { id: 'lr', label: 'Learning Rate (η)', type: 'range', min: 0.01, max: 0.5, step: 0.01, default: 0.1, unit: '' },
+          { id: 'x1', label: 'Age', type: 'range', min: 18, max: 80, step: 1, default: 35, unit: 'yrs' },
+          { id: 'x2', label: 'Experience (yrs)', type: 'range', min: 0, max: 40, step: 1, default: 10, unit: 'yrs' },
+        ],
+        predict(vals) {
+          const base = 30000;
+          const ageBonus = (vals.x1 - 20) * 800;
+          const expBonus = vals.x2 * 2500;
+          const treeEffect = Math.log(vals.trees + 1) * 1500;
+          const lrPenalty = (vals.lr - 0.1) * 5000;
+          const salary = base + ageBonus + expBonus + treeEffect - lrPenalty;
+          const iterations = parseInt(vals.trees);
+          return {
+            value: `$${Math.round(salary).toLocaleString()}`,
+            detail: `${iterations} trees  ·  η=${parseFloat(vals.lr).toFixed(2)}\nEstimated annual salary prediction`,
+            salary
+          };
+        },
+        steps: [
+          { t: 'Initialize with mean', d: 'F₀(x) = mean(y) as the baseline model' },
+          { t: 'Fit residuals', d: 'Each new tree hₘ learns the remaining errors' },
+          { t: 'Shrink & add', d: 'Fₘ = Fₘ₋₁ + η·hₘ  (learning rate prevents overfit)' },
+        ],
+        pills: ['XGBoost', 'LightGBM', 'CatBoost', 'Best for Tabular']
+      },
+    ];
+
+    // ─── STATE ──────────────────────────────────────────────────────────────────
+    let current = 0;
+    const state = {};
+    ALGOS.forEach(a => {
+      state[a.id] = {};
+      a.inputs.forEach(inp => { state[a.id][inp.id] = inp.default; });
+    });
+
+    // ─── BUILD TABS ─────────────────────────────────────────────────────────────
+    const tabsEl = document.getElementById('tabs');
+    ALGOS.forEach((a, i) => {
+      const t = document.createElement('div');
+      t.className = 'tab' + (i === 0 ? ' active' : '');
+      t.innerHTML = `<span class="tab-dot" style="background:${a.color}"></span>${a.name}`;
+      t.onclick = () => selectAlgo(i);
+      tabsEl.appendChild(t);
+    });
+
+    // ─── BUILD ALGO PAGES ───────────────────────────────────────────────────────
+    const pagesEl = document.getElementById('algoPages');
+    ALGOS.forEach((a, i) => {
+      const page = document.createElement('div');
+      page.className = 'algo-page' + (i === 0 ? ' active' : '');
+      page.id = `page-${a.id}`;
+      page.innerHTML = `
+    <div class="algo-meta">
+      <div style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.2em;color:var(--muted);margin-bottom:8px;text-transform:uppercase">${a.category} Algorithm</div>
+      <div class="algo-name" style="color:${a.color}">${a.emoji} ${a.name}</div>
+      <p class="algo-desc">${a.desc}</p>
+      <div class="formula-strip" style="color:${a.color};background:${a.color}15;border-color:${a.color}30">${a.formula}</div>
+    </div>
+
+    <div style="padding:20px 24px;border-bottom:1px solid var(--border)">
+      <div class="result-box" id="result-${a.id}">
+        <div class="result-label">← Enter values and click predict</div>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="viz-title">How It Works</div>
+      ${a.steps.map((s, j) => `
+        <div class="step">
+          <div class="step-num" style="border-color:${a.color};color:${a.color}">${j + 1}</div>
+          <div class="step-text"><strong>${s.t}:</strong> ${s.d}</div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="info-pills">
+      ${a.pills.map(p => `<div class="pill">${p}</div>`).join('')}
+    </div>
+  `;
+      pagesEl.appendChild(page);
+    });
+
+    // ─── BUILD INPUT PANEL ──────────────────────────────────────────────────────
+    function buildInputs(algoIdx) {
+      const a = ALGOS[algoIdx];
+      const sec = document.getElementById('inputSection');
+      document.getElementById('inputTitle').textContent = `${a.name} Inputs`;
+      document.documentElement.style.setProperty('--accent', a.color);
+
+      sec.innerHTML = '';
+
+      a.inputs.forEach(inp => {
+        const grp = document.createElement('div');
+        grp.className = 'input-group';
+
+        if (inp.type === 'range') {
+          grp.innerHTML = `
+        <div class="input-label">
+          <span>${inp.label}</span>
+          <span class="val-badge" id="badge-${a.id}-${inp.id}">${state[a.id][inp.id]}${inp.unit}</span>
+        </div>
+        <input type="range" min="${inp.min}" max="${inp.max}" step="${inp.step}"
+          value="${state[a.id][inp.id]}"
+          oninput="updateVal('${a.id}','${inp.id}',this.value,'${inp.unit}')">
+      `;
+        } else if (inp.type === 'toggle') {
+          grp.innerHTML = `
+        <div class="input-label"><span>${inp.label}</span></div>
+        <div class="toggle-group">
+          ${inp.options.map((o, oi) => `
+            <div class="toggle-btn ${state[a.id][inp.id] === oi ? 'active' : ''}"
+              onclick="setToggle('${a.id}','${inp.id}',${oi},this)">${o}</div>
+          `).join('')}
+        </div>
+      `;
+        }
+        sec.appendChild(grp);
+      });
+
+      const btn = document.createElement('button');
+      btn.className = 'predict-btn';
+      btn.textContent = `▶  Run ${a.name}`;
+      btn.style.background = `linear-gradient(135deg, ${a.color}, var(--purple))`;
+      btn.onclick = () => runPrediction(algoIdx);
+      sec.appendChild(btn);
+    }
+
+    // ─── INTERACTIONS ────────────────────────────────────────────────────────────
+    function updateVal(algoId, inputId, val, unit) {
+      state[algoId][inputId] = parseFloat(val);
+      const badge = document.getElementById(`badge-${algoId}-${inputId}`);
+      if (badge) badge.textContent = parseFloat(val) + unit;
+    }
+
+    function setToggle(algoId, inputId, val, el) {
+      state[algoId][inputId] = val;
+      el.closest('.toggle-group').querySelectorAll('.toggle-btn').forEach((b, i) => {
+        b.classList.toggle('active', i === val);
+      });
+    }
+
+    function selectAlgo(idx) {
+      current = idx;
+      document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+      document.querySelectorAll('.algo-page').forEach((p, i) => p.classList.toggle('active', i === idx));
+      buildInputs(idx);
+    }
+
+    function runPrediction(idx) {
+      const a = ALGOS[idx];
+      const result = a.predict(state[a.id]);
+      const box = document.getElementById(`result-${a.id}`);
+      box.classList.add('has-result');
+      box.style.borderColor = a.color;
+      box.style.boxShadow = `0 0 20px ${a.color}20`;
+      box.innerHTML = `
+    <div class="result-label">PREDICTION OUTPUT</div>
+    <div class="result-value" style="color:${a.color}">${result.value}</div>
+    <div class="result-detail">${result.detail}</div>
+  `;
+    }
+
+    // ─── INIT ────────────────────────────────────────────────────────────────────
+    buildInputs(0);
+  </script>
+</body>
+
+</html>
